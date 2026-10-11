@@ -1,0 +1,35 @@
+{
+  "api_base_url": "https://data-api.binance.vision",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "check_interval_seconds": 300,
+  "cooldown_minutes": 360,
+  "drop_24h_percent": 8,
+  "rise_24h_percent": 10,
+  "sma_interval": "1h",
+  "sma_fast": 20,
+  "sma_slow": 50,
+  "trading": {
+    "enabled": true,
+    "since": "2026-10-11T00:30:00+00:00",
+    "hold": {
+      "enabled": true,
+      "symbols": ["BTCUSDT", "ETHUSDT", "BNBUSDT"],
+      "amount_usdt": 10,
+      "interval_hours": 720,
+      "max_total_usdt": 35
+    },
+    "swing": {
+      "enabled": true,
+      "symbols": ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT"],
+      "order_usdt": 6,
+      "budget_usdt": 12,
+      "sma_interval": "15m",
+      "sma_fast": 9,
+      "sma_slow": 21
+    }
+  },
+  "price_levels": {
+    "BTCUSDT": {"above": 120000, "below": 60000},
+    "ETHUSDT": {"above": 5000, "below": 2000}
+  }
+}
