@@ -49,8 +49,24 @@ def send_telegram(text):
         print(f"Error de Telegram: {r.status_code} {r.text}")
 
 
+def alert_error(state, key, text):
+    """Avisa de un error por Telegram, como máximo una vez por hora por cada tipo."""
+    if time.time() - state.get(key, 0) > 3600:
+        state[key] = time.time()
+        send_telegram(text)
+
+
+_ban_until = 0.0  # si Binance limita la IP (418/429), no se insiste hasta esta hora
+
+
 def get_json(base_url, path, params):
+    global _ban_until
+    wait = _ban_until - time.time()
+    if wait > 0:
+        raise requests.RequestException(f"Binance limitó esta IP; en pausa {int(wait)} s más")
     r = requests.get(base_url + path, params=params, timeout=15)
+    if r.status_code in (418, 429):
+        _ban_until = time.time() + int(r.headers.get("Retry-After", 300))
     r.raise_for_status()
     return r.json()
 
@@ -123,7 +139,7 @@ def swing_signal(cfg, symbol):
     return None
 
 
-def run_swing(cfg):
+def run_swing(cfg, state):
     """Corto plazo: compra y vende según cruces. Las operaciones son idempotentes:
     no compra si ya hay posición y no vende si no la hay."""
     s = cfg["trading"]["swing"]
@@ -146,7 +162,7 @@ def run_swing(cfg):
             elif position["qty"] > 0:
                 send_telegram("⚡ [CORTO] " + trader.market_sell(symbol, position["qty"]))
         except Exception as e:  # noqa: BLE001 - un fallo en un par no debe frenar a los demás
-            send_telegram(f"⚠️ Error en corto plazo {symbol}: {e}")
+            alert_error(state, "err:swing", f"⚠️ Error en corto plazo {symbol}: {e}")
 
 
 def run_hold(cfg, state):
@@ -174,7 +190,7 @@ def run_hold(cfg, state):
         if lines:
             send_telegram("🌱 [LARGO] Compras periódicas:\n" + "\n".join(lines))
     except Exception as e:  # noqa: BLE001
-        send_telegram(f"⚠️ Error en largo plazo: {e}")
+        alert_error(state, "err:hold", f"⚠️ Error en largo plazo: {e}")
 
 
 def run_once(cfg, state):
@@ -190,7 +206,7 @@ def run_once(cfg, state):
         if t.get("hold", {}).get("enabled"):
             run_hold(cfg, state)
         if t.get("swing", {}).get("enabled"):
-            run_swing(cfg)
+            run_swing(cfg, state)
     STATE_FILE.write_text(json.dumps(state), encoding="utf-8")
 
 
